@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dhaka News 24 - ড্যাশবোর্ড</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f3f4f6; margin: 0; padding: 20px; color: #1f2937; }
+  .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+  h1, h2 { color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+  .form-group { margin-bottom: 20px; }
+  label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+  input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 15px; }
+  textarea { height: 100px; resize: vertical; }
+  .help-text { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .btn { background: #e01c1c; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
+  .btn:hover { background: #b91c1c; }
+  .config-box { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 6px; margin-bottom: 25px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Dhaka News 24 — এডমিন প্যানেল 📝</h1>
+  <div class="config-box">
+    <h3>🔗 গিটহাব কানেকশন (একবার দিলেই ব্রাউজারে সেভ থাকবে)</h3>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+      <div><label>GitHub Username</label><input type="text" id="gh-user" placeholder="e.g., rifat123"></div>
+      <div><label>Repository Name</label><input type="text" id="gh-repo" placeholder="e.g., dhakanews24"></div>
+    </div>
+    <label>GitHub Personal Access Token (PAT)</label>
+    <input type="text" id="gh-token" placeholder="ghp_xxxxxxxxxxxx">
+  </div>
+
+  <h2>📰 খবর পরিবর্তন করুন</h2>
+  <div class="form-group">
+    <label>🔥 প্রধান খবর (Hero News Title)</label>
+    <input type="text" id="in-hero-title">
+  </div>
+  <div class="form-group">
+    <label>📝 প্রধান খবরের বিস্তারিত অংশ (Hero News Excerpt)</label>
+    <textarea id="in-hero-excerpt"></textarea>
+  </div>
+  <div class="form-group">
+    <label>🚨 ব্রেকিং নিউজ (ডানদিকের সাইডবার)</label>
+    <textarea id="in-breaking"></textarea>
+    <div class="help-text">নিয়ম: প্রতি লাইনে একটি করে খবর লিখবেন এভাবে -> সময় | খবরের শিরোনাম</div>
+  </div>
+  <div class="form-group">
+    <label>🕒 সর্বশেষ সংবাদ (বামদিকের সাইডবার)</label>
+    <textarea id="in-latest"></textarea>
+    <div class="help-text">নিয়ম: প্রতি লাইনে শুধুমাত্র একটি করে খবরের শিরোনাম লিখুন।</div>
+  </div>
+  <div class="form-group">
+    <label>🇧🇩 জাতীয় সংবাদ (নিচের সেকশন)</label>
+    <textarea id="in-national"></textarea>
+    <div class="help-text">নিয়ম: প্রতি লাইনে একটি করে খবর লিখবেন এভাবে -> তারিখ ও সময় | খবরের শিরোনাম</div>
+  </div>
+  <button class="btn" onclick="publishNews()">পাবলিশ করুন 🚀</button>
+</div>
+
+<script>
+  window.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('dn24_gh_token');
+    const user = localStorage.getItem('dn24_gh_user');
+    const repo = localStorage.getItem('dn24_gh_repo');
+    
+    if(token) document.getElementById('gh-token').value = token;
+    if(user) document.getElementById('gh-user').value = user;
+    if(repo) document.getElementById('gh-repo').value = repo;
+    
+    if(user && repo) {
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${user}/${repo}/main/news.json?t=${Date.now()}`);
+        if(res.ok) {
+          const data = await res.json();
+          document.getElementById('in-hero-title').value = data.hero.title;
+          document.getElementById('in-hero-excerpt').value = data.hero.excerpt;
+          document.getElementById('in-breaking').value = data.breaking.map(i => `${i.time} | ${i.title}`).join('\n');
+          document.getElementById('in-latest').value = data.latest.join('\n');
+          document.getElementById('in-national').value = data.national.map(i => `${i.meta} | ${i.title}`).join('\n');
+        }
+      } catch(e) { console.log(e); }
+    }
+  });
+
+  async function publishNews() {
+    const user = document.getElementById('gh-user').value.trim();
+    const repo = document.getElementById('gh-repo').value.trim();
+    const token = document.getElementById('gh-token').value.trim();
+
+    if(!user || !repo || !token) { alert('দয়া করে গিটহাবের সব তথ্য সঠিকভাবে দিন!'); return; }
+
+    localStorage.setItem('dn24_gh_user', user);
+    localStorage.setItem('dn24_gh_repo', repo);
+    localStorage.setItem('dn24_gh_token', token);
+
+    const breakingLines = document.getElementById('in-breaking').value.split('\n').filter(l => l.trim());
+    const breakingData = breakingLines.map(line => {
+      const parts = line.split('|');
+      return { time: parts[0] ? parts[0].trim() : '', title: parts[1] ? parts[1].trim() : line.trim() };
+    });
+
+    const latestData = document.getElementById('in-latest').value.split('\n').filter(l => l.trim());
+
+    const nationalLines = document.getElementById('in-national').value.split('\n').filter(l => l.trim());
+    const nationalData = nationalLines.map(line => {
+      const parts = line.split('|');
+      return { meta: parts[0] ? parts[0].trim() : '', title: parts[1] ? parts[1].trim() : line.trim() };
+    });
+
+    const finalData = {
+      hero: { title: document.getElementById('in-hero-title').value, excerpt: document.getElementById('in-hero-excerpt').value },
+      breaking: breakingData,
+      latest: latestData,
+      national: nationalData
+    };
+
+    const url = `https://api.github.com/repos/${user}/${repo}/contents/news.json`;
+
+    try {
+      let sha = "";
+      const getRes = await fetch(url, { headers: { "Authorization": `token ${token}` } });
+      if(getRes.ok) { const getData = await getRes.json(); sha = getData.sha; }
+
+      const putRes = await fetch(url, {
+        method: "PUT",
+        headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "News updated from dashboard",
+          content: btoa(unescape(encodeURIComponent(JSON.stringify(finalData, null, 2)))),
+          sha: sha
+        })
+      });
+
+      if(putRes.ok) { alert('অভিনন্দন! নিউজ সফলভাবে পাবলিশ হয়েছে এবং সাইটে লাইভ হয়ে গেছে! 🎉'); location.reload(); } 
+      else { alert('পাবলিশ করতে সমস্যা হয়েছে। গিটহাব টোকেন বা রেপো নাম চেক করুন।'); }
+    } catch(err) { alert('Error: ' + err.message); }
+  }
+</script>
+</body>
+</html>
